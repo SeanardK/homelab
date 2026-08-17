@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  n8n-postgres:
+    image: postgres:15
+    container_name: n8n-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=${N8N_DB_PASSWORD}
+      - POSTGRES_DB=n8n
+    volumes:
+      - n8n-postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5679:5432"
+    healthcheck:
+      test: [ 'CMD-SHELL', 'pg_isready -h localhost -U n8n' ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  n8n:
+    image: n8nio/n8n
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=n8n-postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=${N8N_DB_PASSWORD}
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+      - N8N_HOST=n8n.seanard.my.id
+      - N8N_PROTOCOL=https
+      - N8N_EDITOR_BASE_URL=https://n8n.seanard.my.id
+      - WEBHOOK_URL=https://n8n.seanard.my.id/
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      n8n-postgres:
+        condition: service_healthy
+
+volumes:
+  n8n_data:
+  n8n-postgres_data:

@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  jaeger-init:
+    image: busybox
+    container_name: jaeger-init
+    user: "0:0"
+    command: chown -R 10001:10001 /badger
+    volumes:
+      - jaeger_data:/badger
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    restart: unless-stopped
+    depends_on:
+      jaeger-init:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=badger
+      - BADGER_EPHEMERAL=false
+      - BADGER_DIRECTORY_VALUE=/badger/data
+      - BADGER_DIRECTORY_KEY=/badger/key
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"
+      - "${JAEGER_OTLP_GRPC_PORT:-4317}:4317"
+      - "${JAEGER_OTLP_HTTP_PORT:-4318}:4318"
+      - "${JAEGER_COLLECTOR_HTTP_PORT:-14268}:14268"
+      - "${JAEGER_COLLECTOR_GRPC_PORT:-14250}:14250"
+    volumes:
+      - jaeger_data:/badger
+    networks:
+      - grafana_monitoring
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    restart: unless-stopped
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
+    depends_on:
+      - jaeger
+    env_file:
+      - .env
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "${OTEL_COLLECTOR_OTLP_GRPC_PORT:-4320}:4317"
+      - "${OTEL_COLLECTOR_OTLP_HTTP_PORT:-4319}:4318"
+      - "${OTEL_COLLECTOR_METRICS_PORT:-8889}:8889"
+    networks:
+      - grafana_monitoring
+
+networks:
+  grafana_monitoring:
+    external: true
+
+volumes:
+  jaeger_data:

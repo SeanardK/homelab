@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    container_name: gitlab
+    restart: unless-stopped
+    hostname: "git.seanard.my.id"
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://git.seanard.my.id'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2224
+        gitlab_rails['initial_root_password'] = "${GITLAB_ROOT_PASSWORD}"
+        nginx['redirect_http_to_https'] = false
+        letsencrypt['enable'] = false
+    ports:
+      - "8081:80"
+      - "2224:22"
+    volumes:
+      - gitlab_config:/etc/gitlab
+      - gitlab_logs:/var/log/gitlab
+      - gitlab_data:/var/opt/gitlab
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost/-/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  gitlab-runner:
+    image: gitlab/gitlab-runner:latest
+    container_name: gitlab-runner
+    restart: unless-stopped
+    depends_on:
+      - gitlab
+    volumes:
+      - ./gitlab-runner/config:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+      - gitlab_runner_cache:/cache
+    environment:
+      CI_SERVER_URL: "http://git.seanard.my.id"
+
+volumes:
+  gitlab_config:
+  gitlab_logs:
+  gitlab_data:
+  gitlab_runner_cache:

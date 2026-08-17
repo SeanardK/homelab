@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress-seanard
+    restart: unless-stopped
+    environment:
+      WORDPRESS_DB_HOST: wordpress-seanard-mysql:3306
+      WORDPRESS_DB_NAME: wordpress_db
+      WORDPRESS_DB_USER: seanard
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+    ports:
+      - "8084:80"
+    volumes:
+      - ./wp-content:/var/www/html/wp-content
+    networks:
+      - wp_seanard_net
+    depends_on:
+      wordpress-seanard-mysql:
+        condition: service_healthy
+
+  wordpress-seanard-mysql:
+    image: mysql:8.0
+    container_name: wordpress-seanard-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${WORDPRESS_MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: wordpress_db
+      MYSQL_USER: seanard
+      MYSQL_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+    volumes:
+      - seanard_mysql_data:/var/lib/mysql
+    networks:
+      - wp_seanard_net
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "--silent" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    stop_grace_period: 30s
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --innodb-buffer-pool-size=256M
+      - --innodb-flush-log-at-trx_commit=2
+
+volumes:
+  seanard_mysql_data:
+
+
+networks:
+  wp_seanard_net:
+    driver: bridge

@@ -1,0 +1,31 @@
+version: '3.8'
+
+name: postgres_prod
+
+services:
+  postgres:
+    env_file:
+      - .env
+    image: postgres:16
+    container_name: postgres_prod
+    restart: unless-stopped
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - postgres_prod_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_prod_data:
+
+
+networks:
+  postgres_prod_network:
+    driver: bridge

@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  grafana:
+    image: grafana/grafana:latest
+    container_name: monitoring-grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    networks:
+      - monitoring
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    container_name: monitoring-pushgateway
+    restart: unless-stopped
+    ports:
+      - "${PUSHGATEWAY_PORT}:9091"
+    networks:
+      - monitoring
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: monitoring-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - monitoring
+  loki:
+    image: grafana/loki:latest
+    container_name: monitoring-loki
+    restart: unless-stopped
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+    networks:
+      - monitoring
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: monitoring-tempo
+    restart: unless-stopped
+    command: [ "-config.file=/etc/tempo/tempo.yaml" ]
+    ports:
+      - "${TEMPO_API_PORT:-3200}:3200"
+      - "${TEMPO_GRPC_PORT:-4317}:4317"
+      - "${TEMPO_HTTP_PORT:-4318}:4318"
+    volumes:
+      - tempo_data:/var/tempo
+      - ./tempo.yml:/etc/tempo/tempo.yaml
+    networks:
+      - monitoring
+
+  mimir:
+    image: grafana/mimir:latest
+    container_name: monitoring-mimir
+    restart: unless-stopped
+    command: [ "-config.file=/etc/mimir/mimir.yaml" ]
+    ports:
+      - "${MIMIR_PORT:-9009}:9009"
+    volumes:
+      - mimir_data:/data
+      - ./mimir.yml:/etc/mimir/mimir.yaml
+    networks:
+      - monitoring
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  grafana_data:
+  prometheus_data:
+  loki_data:
+  tempo_data:
+  mimir_data:

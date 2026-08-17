@@ -1,0 +1,49 @@
+FROM jenkins/inbound-agent:latest-jdk21
+
+USER root
+
+RUN set -eux; \
+  apt-get update; \
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+  apt-transport-https \
+  ca-certificates \
+  curl \
+  gnupg \
+  lsb-release \
+  git \
+  openssh-client \
+  build-essential \
+  make \
+  gcc \
+  unzip \
+  zip \
+  jq \
+  wget \
+  python3 \
+  python3-pip \
+  default-jdk \
+  maven \
+  gradle \
+  docker.io \
+  docker-compose \
+  ; \
+  rm -rf /var/lib/apt/lists/*;
+
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+  && apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs \
+  && npm install -g npm@latest \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g yarn pnpm
+
+RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+RUN mkdir -p /home/jenkins && chown -R 1000:1000 /home/jenkins
+
+ARG DOCKER_GID=999
+RUN set -eux; \
+  groupadd -g ${DOCKER_GID} docker || true; \
+  usermod -aG docker jenkins || true
+
+USER jenkins

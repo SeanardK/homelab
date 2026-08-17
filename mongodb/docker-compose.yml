@@ -1,0 +1,24 @@
+version: '3.8'
+
+name: mongodb_prod
+
+services:
+  mongo:
+    image: mongo:6.0
+    container_name: mongo_prod
+    env_file:
+      - .env
+    volumes:
+      - mongo_prod_data:/data/db
+    ports:
+      - "27018:27017"
+    networks:
+      - mongodb_prod_network
+
+volumes:
+  mongo_prod_data:
+
+
+networks:
+  mongodb_prod_network:
+    driver: bridge
