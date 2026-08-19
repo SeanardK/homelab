@@ -1,0 +1,50 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+faro.receiver "frontend" {
+  server {
+    listen_address        = "0.0.0.0"
+    listen_port            = 12347
+    cors_allowed_origins   = [sys.env("FARO_ALLOWED_ORIGIN")]
+  }
+
+  output {
+    logs   = [loki.process.faro_logs.receiver]
+    traces = [otelcol.exporter.otlp.faro_traces.input]
+  }
+}
+
+loki.process "faro_logs" {
+  forward_to = [loki.write.faro_logs.receiver]
+
+  stage.logfmt {
+    mapping = { "app_name" = "", "app_environment" = "", "kind" = "" }
+  }
+
+  stage.labels {
+    values = {
+      "service_name" = "app_name",
+      "Application"  = "app_name",
+      "Environment"  = "app_environment",
+      "kind"         = "kind",
+    }
+  }
+}
+
+loki.write "faro_logs" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+otelcol.exporter.otlp "faro_traces" {
+  client {
+    endpoint = "tempo:4317"
+
+    tls {
+      insecure = true
+    }
+  }
+}

@@ -9,6 +9,7 @@ services:
       - "${GRAFANA_PORT:-3000}:3000"
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./provisioning:/etc/grafana/provisioning:ro
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
@@ -81,6 +82,29 @@ services:
     networks:
       - monitoring
 
+  alloy:
+    image: grafana/alloy:latest
+    container_name: monitoring-alloy
+    restart: unless-stopped
+    environment:
+      - FARO_ALLOWED_ORIGIN=${FARO_ALLOWED_ORIGIN}
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+    volumes:
+      - ./alloy-config.alloy:/etc/alloy/config.alloy:ro
+      - alloy_data:/var/lib/alloy/data
+    ports:
+      - "${ALLOY_UI_PORT:-9098}:12345"
+      - "${ALLOY_FARO_PORT:-9099}:12347"
+    depends_on:
+      - loki
+      - tempo
+    networks:
+      - monitoring
+
 networks:
   monitoring:
     driver: bridge
@@ -91,3 +115,4 @@ volumes:
   loki_data:
   tempo_data:
   mimir_data:
+  alloy_data:
