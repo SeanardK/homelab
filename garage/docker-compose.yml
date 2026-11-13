@@ -1,0 +1,21 @@
+services:
+  garage:
+    image: dxflrs/garage:v2.3.0
+    container_name: garage
+    ports:
+      - "3900:3900" # S3 API
+      - "3901:3901" # RPC (cluster, only needed for multi-node)
+      - "3902:3902" # Web (static site hosting over S3, optional)
+      - "3903:3903" # Admin API (health, metrics, cluster management)
+    env_file:
+      - .env
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - garage_meta:/data/meta
+      - garage_data:/data/data
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
+    restart: unless-stopped
+
+volumes:
+  garage_meta:
+  garage_data:

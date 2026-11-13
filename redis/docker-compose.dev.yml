@@ -1,0 +1,33 @@
+version: '3.8'
+
+name: redis_dev
+
+services:
+  redis_dev:
+    env_file:
+      - .env.dev
+    image: redis:7-alpine
+    container_name: redis_dev
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - redis_dev_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} --no-auth-warning ping | grep PONG" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - redis_dev_network
+
+volumes:
+  redis_dev_data:
+
+
+networks:
+  redis_dev_network:
+    name: redis_dev_network
+    driver: bridge

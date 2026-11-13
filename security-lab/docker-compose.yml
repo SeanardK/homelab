@@ -1,0 +1,74 @@
+services:
+  # OWASP Juice Shop — modern web app, covers most of the OWASP Top 10
+  # (injection, broken auth, XSS, IDOR, broken access control, etc).
+  # Has a built-in scoreboard/hint system, great as a first target.
+  juice-shop:
+    image: bkimminich/juice-shop:latest
+    container_name: juice-shop
+    restart: unless-stopped
+    ports:
+      - "8100:3000"
+    networks:
+      - security-lab
+
+  # DVWA — classic PHP+MySQL target with adjustable difficulty
+  # (low/medium/high/impossible) per vulnerability class. Self-contained
+  # image (bundles its own Apache+MySQL), no separate DB container needed.
+  dvwa:
+    image: vulnerables/web-dvwa:latest
+    container_name: dvwa
+    restart: unless-stopped
+    ports:
+      - "8101:80"
+    networks:
+      - security-lab
+
+  # OWASP WebGoat — structured, guided lessons (Java). WebWolf is its
+  # companion service used by some lessons (file upload / phishing labs).
+  webgoat:
+    image: webgoat/webgoat:latest
+    container_name: webgoat
+    restart: unless-stopped
+    ports:
+      - "8102:8080"
+      - "8103:9090"
+    environment:
+      WEBGOAT_HOST: 0.0.0.0
+      WEBWOLF_HOST: 0.0.0.0
+    # Image's built-in healthcheck uses curl, which this image doesn't
+    # ship — it always fails and reports "unhealthy" even though the app
+    # is fine. Disable it rather than chase a false positive.
+    healthcheck:
+      disable: true
+    networks:
+      - security-lab
+
+  # Kali Linux (kali-linux-headless) — attacker box, replaces a physical
+  # Kali laptop. Same network as the targets above, so it reaches them
+  # directly by container name (juice-shop, dvwa, webgoat/webwolf) instead
+  # of going out through the host's published ports.
+  kali:
+    build:
+      context: ./kali
+      dockerfile: Dockerfile
+    image: security-lab-kali:latest
+    container_name: kali
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    volumes:
+      - ./kali/workspace:/root/workspace
+    networks:
+      - security-lab
+    command: ["sleep", "infinity"]
+
+networks:
+  # Isolated network — intentionally NOT connected to any other stack
+  # (mysql_prod, vaultwarden, etc). These images are deliberately full of
+  # vulnerabilities; keep them from ever being able to reach anything else
+  # on this host.
+  security-lab:
+    driver: bridge

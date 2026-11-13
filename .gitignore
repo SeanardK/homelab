@@ -21,3 +21,9 @@ gitlab-ce/gitlab-runner/
 
 .DS_Store
 *.log
+CREDENTIALS.md
+
+docs
+
+ai-agents/backups/
+ai-agents/sandbox/workspace/

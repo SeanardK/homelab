@@ -1,0 +1,57 @@
+version: '3.8'
+
+# Stack "ai-agents": wadah buat eksplorasi berbagai AI agent framework.
+# Tiap agent boleh punya kebutuhan network/volume beda-beda, jadi jangan
+# dipaksa satu pola seragam kayak service lain di repo ini.
+name: ai_agents
+
+services:
+  # === Sandbox + Hermes Agent ======================================
+  # Container sandbox (Python+Node) yang sekarang sekaligus jalanin Hermes
+  # gateway otomatis tiap container start (termasuk setelah reboot server,
+  # karena restart: unless-stopped). Bisa tetap dipakai manual lewat:
+  #   docker compose exec agent-sandbox bash
+  #
+  # Image ai-agents-sandbox:hermes = snapshot (docker commit) dari container
+  # yang udah ke-install Hermes lewat installer resminya (venv, chromium,
+  # dst — semua ada di layer container, bukan di Dockerfile). Dockerfile di
+  # ./sandbox cuma resep image dasarnya, JANGAN `compose build` ke tag ini.
+  #
+  # Yang persisten:
+  #   - ./sandbox/workspace -> /workspace   (shared folder host <-> container;
+  #     /root/programming = symlink ke /workspace/programming)
+  #   - volume hermes-home  -> /root/.hermes (config, .env, auth, sesi, DB)
+  #   - ./backups           -> /backups      (folder backup host <-> container;
+  #     di-gitignore, isinya secret — Hermes config ada .env + auth.json)
+  agent-sandbox:
+    image: ai-agents-sandbox:hermes
+    container_name: ai-agents-sandbox
+    restart: unless-stopped
+    # init (tini) jadi PID 1: nge-reap proses zombie dari tool Hermes
+    # (chrome, next, cloudflared, dst) dan forward SIGTERM biar gateway
+    # shutdown bersih pas `docker stop`.
+    init: true
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./sandbox/workspace:/workspace
+      - hermes-home:/root/.hermes
+      - ./backups:/backups
+    networks:
+      - ai-agents-net
+    command: [ "hermes", "gateway", "run" ]
+
+  # === agent berikutnya ditambah di sini (CrewAI, Dify, dst) ======
+
+networks:
+  # Isolated dari stack lain di repo ini. Kalau nanti nambah agent yang
+  # butuh network_mode: host (kayak Hermes dulu — butuh akses langsung
+  # buat webhook messaging platform), dia gak bisa ikut network ini,
+  # cukup jangan didaftarin di sini.
+  ai-agents-net:
+    name: ai_agents_network
+    driver: bridge
+
+volumes:
+  hermes-home:
+    name: ai_agents_hermes_home

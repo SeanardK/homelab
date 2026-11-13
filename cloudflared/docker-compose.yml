@@ -1,0 +1,13 @@
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    # MUST be host networking — the tunnel's ingress rules target
+    # "http://localhost:<port>" for every hostname, which only resolves to
+    # the actual Docker host (and its published container ports) when the
+    # container shares the host's network namespace. On the default
+    # "bridge" network, "localhost" resolves to the container itself and
+    # every route 502s.
+    network_mode: host
+    command: ["tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARE_TUNNEL_TOKEN}"]

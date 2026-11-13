@@ -1,0 +1,43 @@
+services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    environment:
+      # Traefik v3.1's bundled docker client defaults to an old API
+      # version that this Docker Engine (29.x, min supported API 1.40)
+      # rejects. Force a modern version.
+      DOCKER_API_VERSION: "1.47"
+    command:
+      - --providers.docker=true
+      # Only route containers that explicitly opt in with
+      # "traefik.enable=true" — never auto-expose every container on the
+      # host by default.
+      - --providers.docker.exposedByDefault=false
+      - --providers.docker.network=traefik-proxy
+      - --entrypoints.web.address=:80
+      - --entrypoints.dashboard.address=:8090
+      - --api.dashboard=true
+    ports:
+      - "${TRAEFIK_HTTP_PORT:-80}:80"
+      - "${TRAEFIK_DASHBOARD_PORT:-8090}:8090"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-dashboard.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=dashboard"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.middlewares=traefik-auth"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_DASHBOARD_HTPASSWD}"
+    networks:
+      - traefik-proxy
+
+networks:
+  # Shared, external-style network — future portfolio project containers
+  # join this (in addition to their own network) and add
+  # "traefik.enable=true" + a Host() rule label to get auto-routed, no
+  # manual port juggling needed.
+  traefik-proxy:
+    name: traefik-proxy
+    driver: bridge

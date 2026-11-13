@@ -10,10 +10,6 @@ services:
     image: jenkins-runner:latest
     container_name: jenkins-runner
     restart: unless-stopped
-    environment:
-      - JENKINS_URL=http://192.168.100.56:83
-      - JENKINS_AGENT_NAME=docker-agent
-      - JENKINS_SECRET=${JENKINS_AGENT_SECRET}
     volumes:
       - ./agent_home:/home/jenkins
       - /var/run/docker.sock:/var/run/docker.sock
@@ -22,7 +18,16 @@ services:
       - "${DOCKER_GID:-999}"
     networks:
       - jenkins
-    command: [ "-url", "http://192.168.100.56:83", "${JENKINS_AGENT_SECRET}", "docker-agent" ]
+    command:
+      - "-url"
+      - "http://192.168.100.56:83/"
+      - "-secret"
+      - "${JENKINS_AGENT_SECRET}"
+      - "-name"
+      - "docker-agent"
+      - "-webSocket"
+      - "-workDir"
+      - "/home/jenkins"
 
 networks:
   jenkins:
